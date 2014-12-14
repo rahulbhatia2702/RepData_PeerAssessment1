@@ -1,25 +1,109 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+author: "rahul bhatia"
+date: "December 14, 2014"
+output: html_document
 ---
 
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-## Loading and preprocessing the data
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
+Loading Data :
+```{r}
+  library(lattice)
+  actdata<-read.csv("activity.csv",na.strings="NA",colClasses=c("numeric","character","numeric"))
+  actdata$date <- as.Date(actdata$date , "%Y-%m-%d")
+```
 
+Histogram of the total number of steps taken each day:
 
-## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+  Totalsteps <- aggregate(steps ~ date, data = actdata, sum, na.rm = TRUE)
+  hist(Totalsteps$steps, main = "Total steps by day", xlab = "day", col = "blue")
+```
 
+The mean and median total number of steps taken per day:
+```{r, echo=TRUE}
+  mean(Totalsteps$steps) 
+  median(Totalsteps$steps)
+```
+time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis):
+```{r, echo=TRUE}
+  tsdata <- tapply(actdata$steps, actdata$interval, mean, na.rm = TRUE) 
+  plot(row.names(tsdata), tsdata, type = "l", xlab = "5-min interval", 
+       ylab = "Average across all Days", main = "Average number of steps taken", 
+       col = "red")
+```
 
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps:
+```{r, echo=TRUE}
+   max_intervl <- which.max(tsdata)
+   names(max_intervl)
+```
 
-## What is the average daily activity pattern?
+the total number of missing values in the dataset (i.e. the total number of rows with NAs):
+```{r, echo=TRUE}
+   act_NA <- sum(is.na(actdata))
+   act_NA
+```
 
+The strategy does not need to be sophisticated:the mean used to fill missing:
+```{r, echo=TRUE}
+  StepsMean <- aggregate(steps ~ interval, data = actdata, FUN = mean)
+  fillMissing <- numeric()
+  for (i in 1:nrow(actdata)) {
+    obs <- actdata[i, ]
+    if (is.na(obs$steps)) {
+      steps <- subset(StepsMean, interval == obs$interval)$steps
+    } else {
+      steps <- obs$steps
+    }
+    fillMissing <- c(fillMissing, steps)
+  }
+  
+  new_actdata <- actdata
+  new_actdata$steps <- fillMissing
+```
+histogram of the total number of steps taken each day :
+```{r, echo=TRUE}
+  TotalSteps2 <- aggregate(steps ~ date, data = new_actdata, sum, na.rm = TRUE)
+  hist(TotalSteps2$steps, main = "Total steps by day", xlab = "day", col = "red")
+```
+the mean and median total number of steps taken per day:
 
+```{r, echo=TRUE}
+  mean(TotalSteps2$steps)
+  median(TotalSteps2$steps)
+  
+```
+yeah the median differs:
 
-## Imputing missing values
+new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day:
+```{r, echo=TRUE}
+  day <- weekdays(actdata$date)
+  daylevel <- vector()
+  for (i in 1:nrow(actdata)) {
+    if (day[i] == "Saturday") {
+      daylevel[i] <- "Weekend"
+    } else if (day[i] == "Sunday") {
+      daylevel[i] <- "Weekend"
+    } else {
+      daylevel[i] <- "Weekday"
+    }
+  }
+  actdata$daylevel <- daylevel
+  actdata$daylevel <- factor(actdata$daylevel)
+  
+  stepsPerDay <- aggregate(steps ~ interval + daylevel, data = actdata, mean)
+  names(stepsPerDay) <- c("interval", "daylevel", "steps")
+  
+```
+ panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis):
+ 
+```{r, echo=TRUE}
+   xyplot(steps ~ interval | daylevel, stepsPerDay, type = "l", layout = c(1, 2), 
+         xlab = "Interval", ylab = "Number of steps")
+```
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+ 
